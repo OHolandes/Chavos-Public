@@ -4,20 +4,20 @@ import json
 
 import discord
 
+import sql
+
+
 __token__ = "TOKEN AQUI"
 
 client = discord.Client()
 
-procurados = {}
-roles_in = json.load(open("cover_up.json")) # id de cargos que nao teram a orelha puxada
 
-
-async def tic_tac(usuario, limit=600, *, message=None):
+async def tic_tac(usuario, limit=1800, *, message=None):
     while limit >= 0:
-        procurados[usuario] = limit
+        sql.sub_time(usuario.id, limit)
         await asyncio.sleep(1)
         limit -= 1
-    procurados.pop(usuario)
+    sql._del_wasted(usuario.id)
     rol = discord.utils.get(message.guild.roles, name="Avisado")
     await usuario.remove_roles(rol)
     print(f"Usuário desculpado:{usuario.display_name}")  
@@ -31,38 +31,67 @@ async def on_ready():
 
 @client.event
 async def on_message(msg: discord.Message):
-    ID_SERV = str(msg.guild.id)
+    ID_SERV = msg.guild.id
     if msg.content.startswith("&"):
         cmd = msg.content.split()
+        roles = cmd[1:]
         if "add" in cmd[0]:
-            with open("cover_up.json", "w+") as cover_up:
-                try:
-                    roles_in[ID_SERV] = [int(rol) for rol in cmd[1:]]
-                    cover_up.write(json.dumps(roles_in))
-                except Exception as error:
-                    print(error)
-                    await msg.channel.send("Um erro ocorreu...")
-                else:
-                    await msg.channel.send("Cargos adicionados!")
+            try:
+                # roles = map(lambda ids: int(ids), roles)
+                sql.add_serv(ID_SERV, *roles)
+            except Exception as error:
+                print(error)
+                await msg.channel.send("Um erro ocorreu...")
+            else:
+                await msg.channel.send("Cargos adicionados!")
+
         elif "show" in cmd[0]:
-            with open("cover_up.json") as cover_up:
-                try:
-                    if roles_in[ID_SERV]:
-                        embed = discord.Embed(title="ID dos cargos que não serão barrados:", 
-                                                description=f"{roles_in[ID_SERV]}",
-                                                color=discord.Colour.dark_red())
-                        await msg.channel.send(embed=embed)
-                    else:
-                        await msg.channel.send("Servidor não encontrado")
-                except Exception as error:
-                    print(error)
-                    await msg.channel.send("Um erro ocorreu...")
+            try:
+                sql.get_roles(ID_SERV)
+            except Exception as error:
+                print(error)
+                await msg.channel.send("Um erro ocorreu...")
+            else:
+                temp_roles = [rol for rol in map(lambda ids: int(ids), 
+                                                    sql.get_roles(ID_SERV)
+                                                )]
+                repr_roles = repr(temp_roles)
+                embedshow = discord.Embed(
+                    title="IDs dos cargos que não seram barrados",
+                    description=temp_roles,
+                    Colour=discord.Colour.green()
+                    )
+                await msg.channel.send(embed=embedshow)
+
+        elif "change" in cmd[0]:
+            try:
+                sql.change_rols(ID_SERV, *roles)
+            except Exception as error:
+                print(error)
+                await msg.channel.send("Um erro ocorreu...")
+            else:
+                await msg.channel.send("Cargos modificados!")
+        
+        elif "del" in cmd[0]:
+            try:
+                sql._del_serv(ID_SERV)
+            except Exception as error:
+                print(error)
+                await msg.channel.send("Um erro ocorreu...")
+            else:
+                await msg.channel.send("Seu servidor parou de ser vigiado...")
+
         elif "help" in cmd[0]:
             text = """
-                    Comandos:
                     **&add**: Adiciono IDs de cargos para não serem ||vigiados||.
+                    **&change**: Trocos os cargos.
                     **&show**: Mostro os IDs salvos neste servidor.
+                    **&del**: Apago seu servidor do meu relatório
                     **&help**: Exibo essa mensagem.
+
+                    Separe um cargo nomeado "**Avisado**" para eu dar carteiradas.
+                    Para adicionar ponha os IDs dos cargos em sequência:
+                    `&add 0000000000 00000000000 0000000000 00000000000`
                     """
             embedhelp = discord.Embed(title="Comandos:", 
                                             description=text,
@@ -72,19 +101,23 @@ async def on_message(msg: discord.Message):
             return
 
     elif len(msg.content) > 300:
-        if not msg.author.top_role.id in roles_in[ID_SERV]:
-            if msg.author in procurados:
-                await msg.channel.send("Ok eu avisei...")
-                rol = discord.utils.get(msg.guild.roles, name="Avisado")
-                await msg.author.add_roles(rol)
-                print(f"Usuário de castigo:{msg.author.display_name} às {datetime.now():%H:%M}")
-            else:
-                await msg.channel.send(
-                    "Você quer mandar uma mensagem ou um livro?, escreva pouco, '_calado você é um poéta_'."
-                    " Te darei __10 minutos__ para você pensar sobre isso, se insistir te deixarei de **castigo**."
-                )
-                procurados[msg.author] = tic_tac(msg.author, message=msg)
+        ID_USER = msg.author.id
+        for rol in msg.author.roles:
+            if not rol.id in sql.get_roles(ID_SERV):
+                if ID_USER in sql.get_wasteds(ID_USER):
+                    await msg.channel.send("Ok eu avisei...")
+                    rol = discord.utils.get(msg.guild.roles, name="Avisado")
+                    await msg.author.add_roles(rol)
+                    print(f"Usuário de castigo:{msg.author.display_name} às {datetime.now():%H:%M}")
+                else:
+                    await msg.channel.send(
+                        "Você quer mandar uma mensagem ou um livro?, escreva pouco, '_calado você é um poéta_'."
+                        " Na próxima te deixarei de **castigo** por **__30__ minutos** para você pensar sobre isso."
+                    )
+                    tic_tac(msg.author, message=msg)
     else:
         return
 
-client.run(__token__)
+
+if __name__ == "__main__":
+    client.run(__token__)
