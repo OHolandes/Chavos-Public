@@ -4,10 +4,10 @@ import json
 
 import discord
 
+from segredin import __token__
 import sql
 
 
-__token__ = "TOKEN AQUI"
 
 client = discord.Client()
 
