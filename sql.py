@@ -3,29 +3,6 @@ import sqlite3
 from typing import List, AnyStr
 
 
-def add_serv(_id, *roles) -> None:
-    conn = sqlite3.connect("chavo.db")
-    cur = conn.cursor()
-    cur.execute(
-        f"INSERT INTO servers (id, id_roles) VALUES ({_id}, '{','.join(roles)}')"
-        )
-    conn.commit()
-    conn.close()
-
-def change_rols(_id, *roles) -> None:
-    conn = sqlite3.connect("chavo.db")
-    cur = conn.cursor()
-    cur.execute(f"UPDATE servers SET id_roles='{','.join(roles)}' WHERE id={_id}")
-    conn.commit()
-    conn.close()
-
-def _del_serv(_id) -> None:
-    conn = sqlite3.connect("chavo.db")
-    cur = conn.cursor()
-    cur.execute(f"DELETE FROM servers WHERE id={_id}")
-    conn.commit()
-    conn.close()
-
 def get_roles(_id:int) -> List[AnyStr]:
     conn = sqlite3.connect("chavo.db")
     cur = conn.cursor()
@@ -47,7 +24,7 @@ def wasted(name:str, _id:int, t:int) -> None:
 def get_wasteds(_id: int):
     conn = sqlite3.connect("chavo.db")
     cur = conn.cursor()
-    cur.execute(f"SELECT id FROM wasteds WHERE id={_id}")
+    cur.execute(f"SELECT * FROM wasteds WHERE id={_id}")
     data = cur.fetchall()
     conn.close()
     return data[0]
@@ -55,8 +32,8 @@ def get_wasteds(_id: int):
 def sub_time(_id:int, t:int) -> None:
     conn = sqlite3.connect("chavo.db")
     cur = conn.cursor()
-    cur.execute("SELECT seconds FROM wasteds WHERE id={_id}")
-    last_time = cur.fetchall()[0]
+    # cur.execute(f"SELECT seconds FROM wasteds WHERE id={_id}")
+    # last_time = cur.fetchall()[0]
     cur.execute(f"UPDATE wasteds SET seconds={t} WHERE id={_id}")
     conn.commit()
     conn.close()
@@ -69,7 +46,4 @@ def _del_wasted(_id) -> None:
     conn.close()
 
 if __name__ == "__main__":
-    serv = 386268259391111178
-    print(get_roles(serv))
-
-# &add 731333773781762139 481600846908358673 938556302383276053 441290194482888734 764623161203359825 438748528228171790
+    _del_wasted(931235385902776371)
